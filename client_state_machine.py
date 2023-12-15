@@ -45,7 +45,7 @@ class ClientSM:
         elif response["status"] == "self":
             self.out_msg += 'You cannot talk to yourself!\n'
         else:
-            self.out_msg += 'User is not online and please try again later\n'
+            self.out_msg += 'This user is not online, please try again later\n'
         return(False)
 
     def disconnect(self):
@@ -56,6 +56,7 @@ class ClientSM:
 
     def proc(self, my_msg, peer_msg):
         self.out_msg = ''
+
 
         if self.flag == 1:
             if my_msg == 'y':
@@ -89,12 +90,12 @@ class ClientSM:
         if len(peer_msg) > 0:
             pm = json.loads(peer_msg)
             if pm["action"] == "game_start":
-                self.out_msg += "Start Playing with {}, play as {}!".format(pm["from"],self.colors[self.initiating])
+                self.out_msg += "Playing with {}, you are {}!".format(pm["from"],self.colors[self.initiating])
                 self.game_peer = pm["from"]
             elif pm["action"] == "game_reject":
                 self.out_msg += '{} rejected your request\n'.format(pm["from"])
             elif pm["action"] == "game_invite":
-                self.out_msg += "{} invites you to play game, want to join in?   TYPE (y/N)\n".format(pm["from"])
+                self.out_msg += "{} invites you to play, do you want to join? TYPE (y/N)\n".format(pm["from"])
                 self.game_peer = pm["from"]
                 self.flag = 1
             elif pm["action"] == "game_win":
@@ -112,7 +113,7 @@ class ClientSM:
             elif pm["action"] == "game_quit":
                 self.game_peer = ''
                 self.out_msg += 'game ended, {} quits!\n'.format(pm["from"])
-                self.chessboard = [[-1 for _ in range(10)] for _ in range(10)]
+                self.chessboard = [[-1 for i in range(10)] for j in range(10)]
 #==============================================================================
 # Once logged in, do a few things: get peer listing, connect, search
 # And, of course, if you are so bored, just go
@@ -174,20 +175,23 @@ class ClientSM:
                 if peer_msg["action"] == "connect":
                     self.peer = peer_msg["from"]
                     self.out_msg += 'Request from ' + self.peer + '\n'
-                    self.out_msg += 'Successfully connected with ' + self.peer
-                    self.out_msg += '. Let\'s chat!\n\n'
+                    self.out_msg += 'You are connected with ' + self.peer
+                    self.out_msg += '. Chat away!\n\n'
                     self.out_msg += '------------------------------------\n'
                     self.state = S_CHATTING
 
-
+#==============================================================================
+# Start chatting, 'bye' for quit
+# This is event handling instate "S_CHATTING"
+#==============================================================================
         elif self.state == S_CHATTING:
-            if len(my_msg) > 0:   
+            if len(my_msg) > 0:     
                 mysend(self.s, json.dumps({"action":"exchange", "from":"[" + self.me + "]", "message":my_msg}))
                 if my_msg == 'bye':
                     self.disconnect()
                     self.state = S_LOGGEDIN
                     self.peer = ''
-            if len(peer_msg) > 0:    
+            if len(peer_msg) > 0:   
                 peer_msg = json.loads(peer_msg)
                 if 'game' in peer_msg["action"]:
                     pass

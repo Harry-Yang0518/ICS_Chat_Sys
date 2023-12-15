@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 helpTextString = r'''
-- To send a message, type the message in the text box at the bottom of the window and press the "SEND" button.
+
 Playing Gobang:
 - The Gobang game is integrated into this chat platform. Here's how you can interact with the game:
     - To start viewing the game interface, press the "Game" button. This will display the chessboard where you can play Gobang.
@@ -58,7 +58,7 @@ class GUI:
                              height=False)
         self.login.configure(width=500,
                              height=400)
-        
+        # create a Label
         self.pls = Label(self.login,
                          text="Gobang game",
                          justify=CENTER,
@@ -67,7 +67,7 @@ class GUI:
         self.pls.place(relheight=0.15,
                        relx=0.4,
                        rely=0.07)
-        
+        # create a Label
         self.labelName = Label(self.login,
                                text="Username: ",
                                font="Helvetica 12")
@@ -76,7 +76,8 @@ class GUI:
                              relx=0.1,
                              rely=0.2)
 
-        
+        # create a entry box for
+        # tyoing the message
         self.entryName = Entry(self.login,
                                font="Helvetica 14")
 
@@ -93,7 +94,8 @@ class GUI:
                              relx=0.1,
                              rely=0.4)
 
-        
+        # create a entry box for
+        # tyoing the message
         self.entryPasswd = Entry(self.login,
                                font="Helvetica 14")
 
@@ -101,10 +103,11 @@ class GUI:
                              relheight=0.12,
                              relx=0.35,
                              rely=0.4)
-        
+        # set the focus of the curser
         self.entryName.focus()
         
-      
+        # create a Continue Button
+        # along with action
         self.log = Button(self.login,
                          text="Login",
                          font="Helvetica 14 bold",
@@ -120,58 +123,48 @@ class GUI:
                         rely=0.75)
         self.Window.mainloop()
 
-    def signIn(self, username, password):
+    def signIn(self, username, passwd):
         """
-        This function handles the sign-in process for a user.
+        Handles the sign-in process for a user.
+
         """
 
-        # Validate username
-        if not self.is_valid_username(username):
+        # 检查用户名是否只包含合法字符
+        if re.match(r'^[a-zA-Z0-9_]+$', username) is None:
             messagebox.showerror('Error', 'Username contains illegal characters (can only use alphabets, numbers and underscore)')
             return
 
-        # Send sign-in request
-        self.process_sign_in(username, password)
-
-    def is_valid_username(self, username):
-        """
-        Checks if the provided username is valid.
-        """
-        return re.match(r'^[a-zA-Z0-9_]+$', username) is not None
-
-    def process_sign_in(self, username, password):
-        """
-        Processes the sign-in request to the server and handles the response.
-        """
-        msg = json.dumps({"action": "signin", "name": username, "passwd": password})
+        # 发送登录请求并处理响应
+        msg = json.dumps({"action": "signin", "name": username, "passwd": passwd})
         self.send(msg)
         response = json.loads(self.recv())
-
-        # Handle response
         if response["status"] == 'ok':
             messagebox.showinfo('Success', 'Sign in successfully')
         else:
             messagebox.showerror('Error', response["message"])
-
-
-
         
-    def goAhead(self, name,passwd):
+    def goAhead(self, name, passwd):
+        """
+        Processes further steps after successful authentication.
+
+        """
+
+        # 检查用户名是否非空
         if len(name) > 0:
+            # 发送登录请求并处理响应
             msg = json.dumps({"action": "login", "name": name, "passwd": passwd})
             self.send(msg)
             response = json.loads(self.recv())
             if response["status"] == 'ok':
+                # 更新UI并启动新线程
                 self.login.destroy()
                 self.sm.set_state(S_LOGGEDIN)
                 self.sm.set_myname(name)
                 self.layout(name)
                 self.textCons.config(state=NORMAL)
-                
-                self.textCons.insert(END, menu + "\n\n")
+                self.textCons.insert(END, menu + "\n\n")  # 假设menu已定义
                 self.textCons.config(state=DISABLED)
                 self.textCons.see(END)
-                
                 process = threading.Thread(target=self.proc)
                 process.daemon = True
                 process.start()
@@ -179,7 +172,7 @@ class GUI:
                 messagebox.showerror('Error', response["message"])
         
 
-    
+    # The main layout of the chat
     def layout(self, name):
         self.name = name
         self.Window.deiconify()
@@ -246,9 +239,11 @@ class GUI:
         self.textCons.config(cursor="arrow")
         
 
-   
+        # create a scroll bar
         scrollbar = Scrollbar(self.textCons)
 
+        # place the scroll bar
+        # into the gui window
         scrollbar.place(relheight=1,
                         relx=0.974)
 
@@ -256,52 +251,43 @@ class GUI:
 
         self.textCons.config(state=DISABLED)
 
-
+    # function to basically start the thread for sending messages
     def parseOutput(self, msg):
         """
-        Processes the input message by replacing specific sequences with timestamps,
-        handling special character replacements, and applying text styles like
-        bold and italic. The processed message is then inserted into a text widget
-        with appropriate styling.
+        Processes and formats a given message for display.
         """
 
-        # Replace special sequences with time and date
+        # 替换时间和日期占位符
         msg = re.sub(r'\\t', time.strftime("%H:%M:%S", time.localtime()), msg)
         msg = re.sub(r'\\d', time.strftime("%b %d %Y", time.localtime()), msg)
 
-        # Replace '\*' with a temporary placeholder and then back to '*'
-        temp_char = chr(27)
-        msg = msg.replace('\\*', temp_char)
+        # 替换特定序列为 '*'
+        msg = re.sub(r'\\\*', chr(27), msg)
 
-        # Apply text styling (bold and italic) and insert into GUI element
-        is_bold = False
-        for segment in re.split(r'\*\*', msg):
-            if is_bold:
-                self.insert_styled_text(segment, 'b', temp_char)
-                is_bold = False
-            else:
-                self.insert_styled_text(segment, None, temp_char)
-                is_bold = True
+        def reduce(a):
+            """ Helper function to replace chr(27) with '*' """
+            return re.sub(chr(27), '*', a)
 
-        # Append a newline at the end
+        # 应用文本样式（粗体和斜体）
+        f = 0
+        for i in re.split(r'\*\*', msg):
+            if f == 0:
+                g = 0
+                for j in re.split(r'\*', i):
+                    if g == 0:
+                        self.textCons.insert(END, reduce(j))
+                        g = 1
+                    elif g == 1:
+                        self.textCons.insert(END, reduce(j), 'i')
+                        g = 0
+                f = 1
+            elif f == 1:
+                self.textCons.insert(END, reduce(i), 'b')
+                f = 0
+
+        # 添加换行符并返回处理后的消息
         self.textCons.insert(END, '\n')
         return msg
-
-    def insert_styled_text(self, text, style, temp_char):
-        """
-        Inserts text into the text widget with specified style, handling the replacement
-        of the temporary character used for special formatting.
-        """
-        is_italic = False
-        for sub_segment in re.split(r'\*', text):
-            # Replace temporary character back to '*'
-            sub_segment = sub_segment.replace(temp_char, '*')
-            if style == 'b' or (style is None and is_italic):
-                self.textCons.insert(END, sub_segment, 'i' if is_italic else 'b')
-            else:
-                self.textCons.insert(END, sub_segment)
-            is_italic = not is_italic
-
 
     def sendButton(self, msg):
         
@@ -313,18 +299,19 @@ class GUI:
         self.textCons.see(END)
 
     def proc(self):
+        # print(self.msg)
         while True:
             read, write, error = select.select([self.socket], [], [], 0)
             peer_msg = []
-            
+            # print(self.msg)
             if self.socket in read:
                 peer_msg = self.recv()
             if len(self.my_msg) > 0 or len(peer_msg) > 0:
-                
+                # print(self.system_msg)
                 self.system_msg = self.sm.proc(self.my_msg, peer_msg)
                 self.my_msg = ""
                 self.textCons.config(state=NORMAL)
-                
+                #self.textCons.insert(END, self.system_msg + "\n\n")
                 if self.boardWindow:
                     self.updateChessboard()
                 if 'game ended' in self.system_msg:
@@ -364,7 +351,7 @@ class GUI:
     def chessboardInit(self):
         self.myCanvas.delete("all")
         for i in range(10):
-            
+            # 更新线条颜色和宽度
             self.myCanvas.create_line(25, 25 + i * 44.444, 425, 25 + i * 44.444, fill='#808080', width=1)
             self.myCanvas.create_line(25 + i * 44.444, 25, 25 + i * 44.444, 425, fill='#808080', width=1)
 
